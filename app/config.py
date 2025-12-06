@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     openweather_api_key: str = os.getenv("OPENWEATHER_API_KEY")
     openweather_base_url: str = "https://api.openweathermap.org/data/2.5"
 
+    # OpenAI API
+    openai_api_key: str = os.getenv("OPENAI_API_KEY")
+    openai_model: str = "gpt-4-turbo-preview"
+
     # Google Cloud / BigQuery
     gcp_project_id: str = os.getenv("GCP_PROJECT_ID")
     bigquery_dataset: str = os.getenv("BIGQUERY_DATASET", "weather_data")

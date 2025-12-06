@@ -59,6 +59,20 @@ class WeatherQuery(BaseModel):
     city: str = Field(..., min_length=2, max_length=100)
     days: Optional[int] = Field(1, ge=1, le=60, description="Number of days of history")
 
+
+class AgentRequest(BaseModel):
+    """Schema for agent chat requests"""
+    message: str = Field(..., min_length=1, max_length=500)
+    session_id: Optional[str] = None
+
+
+class AgentResponse(BaseModel):
+    """Schema for agent chat responses"""
+    response: str
+    tool_calls: Optional[List[dict]] = None
+    session_id: str
+
+
 class HealthResponse(BaseModel):
     """Schema for health check response"""
     status: str

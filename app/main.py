@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_client import make_asgi_app
 from app.config import get_settings
+from app.api.routes import router
 from app.services.database import BigQueryService
 from app.orchestration.scheduler import SchedulerService
 
@@ -69,6 +70,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(router, prefix="/api/v1", tags=["weather"])
 
 # Metrics endpoint
 metrics_app = make_asgi_app()
