@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # Redis for Celery message broker
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - weather_network
+
+  # Main FastAPI application
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/adup-assignment-cc3101fc9d70.json
+    volumes:
+      - ./app:/app/app
+      - ./credentials:/app/credentials:ro
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - weather_network
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+  # Celery worker for background tasks
+  celery_worker:
+    build: .
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/adup-assignment-cc3101fc9d70.json
+    volumes:
+      - ./app:/app/app
+      - ./credentials:/app/credentials:ro
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - weather_network
+    restart: unless-stopped
+    command: celery -A app.orchestration.tasks worker --loglevel=info --concurrency=2
+
+  # Celery beat for scheduled tasks
+  celery_beat:
+    build: .
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/adup-assignment-cc3101fc9d70.json
+    volumes:
+      - ./app:/app/app
+      - ./credentials:/app/credentials:ro
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - weather_network
+    restart: unless-stopped
+    command: celery -A app.orchestration.tasks beat --loglevel=info
+
+volumes:
+  redis_data:
+
+networks:
+  weather_network:
+    driver: bridge
