@@ -1,52 +1,38 @@
+"""Configuration management for weather pipeline"""
 from pydantic_settings import BaseSettings
-from functools import lru_cache
-import os
+from typing import List
 from dotenv import load_dotenv
-import logging
+import os
 
 # Load variables from .env into environment
 load_dotenv()
 
-logger = logging.getLogger(__name__)
-
 class Settings(BaseSettings):
-    # OpenWeatherMap API
-    openweather_api_key: str = os.getenv("OPENWEATHER_API_KEY")
-    openweather_base_url: str = "https://api.openweathermap.org/data/2.5"
-
-    # OpenAI API
-    openai_api_key: str = os.getenv("OPENAI_API_KEY")
-    openai_model: str = "gpt-4-turbo-preview"
-
-    # Google Cloud / BigQuery
-    gcp_project_id: str = os.getenv("GCP_PROJECT_ID")
-    bigquery_dataset: str = os.getenv("BIGQUERY_DATASET", "weather_data")
-    bigquery_table: str = os.getenv("BIGQUERY_TABLE", "weather_records")
-    google_application_credentials: str = "/credentials/adup-assignment-cc3101fc9d70.json"
+    """Application settings loaded from environment variables"""
     
-    # Redis
-    redis_url: str = "redis://redis:6379/0"
+    # OpenWeatherMap API
+    OPENWEATHER_API_KEY: str
+    
+    # Google BigQuery
+    GOOGLE_APPLICATION_CREDENTIALS: str = os.getenv("OPENWEATHER_API_KEY")
+    GCP_PROJECT_ID: str = os.getenv("GCP_PROJECT_ID", "adup-assignment")
+    BIGQUERY_DATASET: str = os.getenv("BIGQUERY_DATASET", "weather_data")
+    BIGQUERY_TABLE: str = os.getenv("BIGQUERY_TABLE", "weather_records")
     
     # Application
-    app_env: str = "production"
-    log_level: str = "INFO"
-    api_host: str = "0.0.0.0"
-    api_port: int = 8000
+    BACKFILL_MONTHS: int = 2
+    UPDATE_INTERVAL_HOURS: int = 1
     
-    # Scheduler
-    hourly_update_enabled: bool = True
-    backfill_on_startup: bool = True
-    backfill_days: int = 60
-    
-    # Rate limiting
-    max_retries: int = 3
-    retry_delay: int = 5
+    # Cities to track
+    CITIES: List[str] = [
+        "London", "Paris", "New York", "Tokyo", "Beijing", "Moscow", "Berlin",
+        "Madrid", "Rome", "Amsterdam", "Vienna", "Stockholm", "Oslo", "Helsinki",
+        "Copenhagen", "Dublin", "Brussels", "Lisbon", "Athens", "Warsaw"
+    ]
     
     class Config:
         env_file = ".env"
-        case_sensitive = False
+        case_sensitive = True
 
 
-@lru_cache()
-def get_settings() -> Settings:
-    return Settings()
+settings = Settings()
