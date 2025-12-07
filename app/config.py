@@ -9,10 +9,13 @@ load_dotenv()
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
-    
+
     # OpenWeatherMap API
     OPENWEATHER_API_KEY: str
-    
+
+    # OpenAI API
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+
     # Google BigQuery
     GOOGLE_APPLICATION_CREDENTIALS: str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
     GCP_PROJECT_ID: str = os.getenv("GCP_PROJECT_ID", "adup-assignment")

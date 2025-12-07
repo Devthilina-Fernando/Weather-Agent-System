@@ -61,3 +61,47 @@ class WeatherHistoryResponse(BaseModel):
     city: str
     records: list[WeatherLatestResponse]
     count: int
+
+
+class AgentQueryRequest(BaseModel):
+    """Request model for agent query endpoint"""
+    query: str = Field(..., description="The user's weather-related question")
+    conversation_history: Optional[list[dict]] = Field(
+        default=None,
+        description="Optional conversation history for context"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "query": "What is the current weather in Colombo?",
+                "conversation_history": None
+            }
+        }
+
+
+class AgentQueryResponse(BaseModel):
+    """Response model for agent query endpoint"""
+    success: bool
+    response: str
+    is_weather_related: bool
+    tool_calls: list[dict] = []
+    model: Optional[str] = None
+    error: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "response": "The current weather in Colombo is 28°C with clear skies...",
+                "is_weather_related": True,
+                "tool_calls": [
+                    {
+                        "function": "get_current_weather_from_storage",
+                        "arguments": {"city": "Colombo"},
+                        "result": {"success": True, "temperature": 28}
+                    }
+                ],
+                "model": "gpt-4o-mini"
+            }
+        }
