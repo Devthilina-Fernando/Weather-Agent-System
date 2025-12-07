@@ -11,9 +11,10 @@ services:
     volumes:
       - ./credentials:/app/credentials:ro
       - ./.env:/app/.env:ro
+    env_file:
+      - .env
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/adup-assignment-cc3101fc9d70.json
-      - .env
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

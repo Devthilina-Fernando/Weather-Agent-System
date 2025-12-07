@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     OPENWEATHER_API_KEY: str
     
     # Google BigQuery
-    GOOGLE_APPLICATION_CREDENTIALS: str = os.getenv("OPENWEATHER_API_KEY")
+    GOOGLE_APPLICATION_CREDENTIALS: str = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
     GCP_PROJECT_ID: str = os.getenv("GCP_PROJECT_ID", "adup-assignment")
     BIGQUERY_DATASET: str = os.getenv("BIGQUERY_DATASET", "weather_data")
     BIGQUERY_TABLE: str = os.getenv("BIGQUERY_TABLE", "weather_records")

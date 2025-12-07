@@ -58,18 +58,18 @@ class BigQueryRepository:
     
     async def insert_weather_data(self, weather_records: List[WeatherData]) -> int:
         """
-        Insert weather data into BigQuery (idempotent)
-        
+        Insert weather data into BigQuery using load jobs (free tier compatible)
+
         Args:
             weather_records: List of WeatherData objects
-            
+
         Returns:
-            Number of records inserted
+            Number of records attempted to insert
         """
         if not weather_records:
             logger.warning("No weather records to insert")
             return 0
-        
+
         # Convert to dict format for BigQuery
         rows_to_insert = []
         for record in weather_records:
@@ -82,55 +82,34 @@ class BigQueryRepository:
                 "wind_speed": record.wind_speed,
                 "condition": record.condition
             })
-        
+
         try:
-            # Use MERGE pattern for idempotency
-            # First, insert into a temp table, then merge
-            temp_table_id = f"{self.full_table_id}_temp_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-            
-            # Create temporary table
+            # Use load jobs with WRITE_APPEND (requires billing enabled)
+            # Schema must match the table schema exactly (all fields REQUIRED)
             job_config = bigquery.LoadJobConfig(
                 schema=[
-                    bigquery.SchemaField("id", "STRING"),
-                    bigquery.SchemaField("city", "STRING"),
-                    bigquery.SchemaField("timestamp", "TIMESTAMP"),
-                    bigquery.SchemaField("temperature", "FLOAT64"),
-                    bigquery.SchemaField("humidity", "INTEGER"),
-                    bigquery.SchemaField("wind_speed", "FLOAT64"),
-                    bigquery.SchemaField("condition", "STRING"),
+                    bigquery.SchemaField("id", "STRING", mode="REQUIRED"),
+                    bigquery.SchemaField("city", "STRING", mode="REQUIRED"),
+                    bigquery.SchemaField("timestamp", "TIMESTAMP", mode="REQUIRED"),
+                    bigquery.SchemaField("temperature", "FLOAT64", mode="REQUIRED"),
+                    bigquery.SchemaField("humidity", "INTEGER", mode="REQUIRED"),
+                    bigquery.SchemaField("wind_speed", "FLOAT64", mode="REQUIRED"),
+                    bigquery.SchemaField("condition", "STRING", mode="REQUIRED"),
                 ],
-                write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+                write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
             )
-            
-            # Load data to temp table
+
+            # Load data directly to main table
             job = self.client.load_table_from_json(
                 rows_to_insert,
-                temp_table_id,
+                self.full_table_id,
                 job_config=job_config
             )
             job.result()  # Wait for the job to complete
-            
-            # Merge with main table (idempotent operation)
-            merge_query = f"""
-            MERGE `{self.full_table_id}` AS target
-            USING `{temp_table_id}` AS source
-            ON target.city = source.city 
-               AND target.timestamp = source.timestamp
-            WHEN NOT MATCHED THEN
-              INSERT (id, city, timestamp, temperature, humidity, wind_speed, condition)
-              VALUES (source.id, source.city, source.timestamp, source.temperature, 
-                      source.humidity, source.wind_speed, source.condition)
-            """
-            
-            query_job = self.client.query(merge_query)
-            query_job.result()
-            
-            # Clean up temp table
-            self.client.delete_table(temp_table_id, not_found_ok=True)
-            
-            logger.info(f"Successfully inserted/merged {len(rows_to_insert)} weather records")
+
+            logger.info(f"Successfully inserted {len(rows_to_insert)} weather records")
             return len(rows_to_insert)
-            
+
         except Exception as e:
             logger.error(f"Error inserting weather data: {str(e)}")
             raise
@@ -138,21 +117,21 @@ class BigQueryRepository:
     async def get_latest_weather(self, city: str) -> Optional[WeatherData]:
         """
         Get latest weather data for a city
-        
+
         Args:
             city: City name
-            
+
         Returns:
             WeatherData object or None
         """
         query = f"""
         SELECT id, city, timestamp, temperature, humidity, wind_speed, condition
         FROM `{self.full_table_id}`
-        WHERE city = @city
+        WHERE LOWER(city) = LOWER(@city)
         ORDER BY timestamp DESC
         LIMIT 1
         """
-        
+
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
                 bigquery.ScalarQueryParameter("city", "STRING", city)
@@ -183,24 +162,24 @@ class BigQueryRepository:
     async def get_weather_history(self, city: str, days: int) -> List[WeatherData]:
         """
         Get weather history for a city
-        
+
         Args:
             city: City name
             days: Number of days to retrieve
-            
+
         Returns:
             List of WeatherData objects
         """
         start_date = datetime.utcnow() - timedelta(days=days)
-        
+
         query = f"""
         SELECT id, city, timestamp, temperature, humidity, wind_speed, condition
         FROM `{self.full_table_id}`
-        WHERE city = @city
+        WHERE LOWER(city) = LOWER(@city)
           AND timestamp >= @start_date
         ORDER BY timestamp DESC
         """
-        
+
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
                 bigquery.ScalarQueryParameter("city", "STRING", city),
