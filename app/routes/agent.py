@@ -15,14 +15,14 @@ async def query_agent(request: AgentQueryRequest):
     Query the weather agent with a natural language question.
 
     The agent will:
-    - Check if the query is weather-related (guardrail)
+    - Check if the query is weather-related
     - Use appropriate tools to fetch weather data
     - Fall back to live API if needed
     - Return a natural language response
 
     Example queries:
-    - "What is the current weather in Colombo?"
-    - "What was the average temperature in Galle last week?"
+    - "What is the current weather in London?"
+    - "What was the average temperature in Paris last week?"
     - "How humid is it in London right now?"
     """
     try:

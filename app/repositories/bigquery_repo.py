@@ -58,7 +58,7 @@ class BigQueryRepository:
     
     async def insert_weather_data(self, weather_records: List[WeatherData]) -> int:
         """
-        Insert weather data into BigQuery using load jobs (free tier compatible)
+        Insert weather data into BigQuery using load jobs
 
         Args:
             weather_records: List of WeatherData objects
@@ -84,8 +84,7 @@ class BigQueryRepository:
             })
 
         try:
-            # Use load jobs with WRITE_APPEND (requires billing enabled)
-            # Schema must match the table schema exactly (all fields REQUIRED)
+            # Use load jobs with WRITE_APPEND to handle large inserts efficiently
             job_config = bigquery.LoadJobConfig(
                 schema=[
                     bigquery.SchemaField("id", "STRING", mode="REQUIRED"),
