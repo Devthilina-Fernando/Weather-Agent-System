@@ -72,9 +72,9 @@ class WeatherAPIClient:
         return WeatherData(
             city=data["name"],
             timestamp=timestamp,
-            temperature=float(data["main"]["temp"]),
+            temperature=round(float(data["main"]["temp"]), 2),
             humidity=int(data["main"]["humidity"]),
-            wind_speed=float(data["wind"]["speed"]),
+            wind_speed=round(float(data["wind"]["speed"]), 2),
             condition=condition
         )
     

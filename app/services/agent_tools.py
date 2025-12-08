@@ -20,7 +20,7 @@ class WeatherAgentTools:
         Get the latest weather data for a city from BigQuery storage.
 
         Args:
-            city: Name of the city (e.g., "Colombo", "Galle", "London")
+            city: Name of the city (e.g., "London")
 
         Returns:
             Dictionary with weather information or error message
@@ -67,8 +67,8 @@ class WeatherAgentTools:
         Get historical weather data for a city from BigQuery storage.
 
         Args:
-            city: Name of the city (e.g., "Colombo", "Galle", "London")
-            days: Number of days of history to retrieve (default: 7)
+            city: Name of the city (e.g., "London")
+            days: Number of days of history to retrieve (default: 3)
 
         Returns:
             Dictionary with historical weather information or error message

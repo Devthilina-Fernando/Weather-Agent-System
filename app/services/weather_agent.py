@@ -41,7 +41,7 @@ Example refusal: "I'm sorry, but I can only help with weather-related questions.
         self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
         self.tools = WeatherAgentTools()
         self.tool_definitions = get_tool_definitions()
-        self.model = "gpt-4o-mini"  # Cost-effective model with function calling
+        self.model = "gpt-4o-mini"  # model with function calling
 
     async def process_query(
         self,
@@ -53,7 +53,6 @@ Example refusal: "I'm sorry, but I can only help with weather-related questions.
 
         Args:
             user_message: The user's question
-            conversation_history: Optional previous messages in the conversation
 
         Returns:
             Dictionary containing the response and metadata

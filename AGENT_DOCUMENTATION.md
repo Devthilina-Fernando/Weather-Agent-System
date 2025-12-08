@@ -1,92 +1,68 @@
-# Weather Agent System - AI Agentic Workflow Documentation
+# AI Agent Documentation
 
-## Overview
+AI-powered conversational agent using OpenAI GPT-4o-mini with function calling to answer weather queries.
 
-This Weather Agent System implements an AI-powered conversational agent using the OpenAI API with function calling capabilities. The agent can answer weather-related queries by intelligently using custom tools to fetch data from BigQuery storage or fall back to the OpenWeatherMap API when needed.
+---
 
-## Features
+## Agent Features
 
-### 1. Agent Implementation
+### Model
+- **GPT-4o-mini**: Cost-effective with excellent function calling
+- **Implementation**: [app/services/weather_agent.py](app/services/weather_agent.py)
+- **Architecture**: Async Python with FastAPI
 
-The agent is implemented using the OpenAI API (GPT-4o-mini model) with function calling capabilities:
+### Three Custom Tools
 
-- **Location**: [app/services/weather_agent.py](app/services/weather_agent.py)
-- **Model**: `gpt-4o-mini` (cost-effective with function calling support)
-- **Architecture**: Asynchronous Python implementation with FastAPI integration
+#### 1. `get_current_weather_from_storage` (Primary)
+- Fetches latest weather from BigQuery
+- Use case: Current weather queries
+- Example: "What's the weather in London?"
 
-### 2. Custom Tools
+#### 2. `get_weather_history_from_storage`
+- Fetches historical data with statistics (avg, min, max temperature)
+- Parameters: `city`, `days` (default: 3)
+- Example: "What was the average temperature in Tokyo last 3 days?"
 
-Three custom tools are available to the agent:
+#### 3. `get_current_weather_from_api` (Fallback)
+- Fetches from OpenWeatherMap API when storage fails
+- Ensures high availability
 
-#### a) `get_current_weather_from_storage` (Primary)
-- **Purpose**: Fetch the latest weather data for a city from BigQuery storage
-- **Source**: BigQuery weather data repository
-- **Use Case**: Primary method for current weather queries
+**Tool definitions**: [app/services/agent_tools.py](app/services/agent_tools.py)
 
-#### b) `get_weather_history_from_storage`
-- **Purpose**: Fetch historical weather data with statistics (average, min, max temperatures)
-- **Source**: BigQuery weather data repository
-- **Use Case**: Questions about past weather patterns and trends
-- **Parameters**:
-  - `city`: City name
-  - `days`: Number of days of history (default: 7)
-
-#### c) `get_current_weather_from_api` (Fallback)
-- **Purpose**: Fetch current weather directly from OpenWeatherMap API
-- **Source**: OpenWeatherMap API (live data)
-- **Use Case**: Fallback when storage query fails or returns no data
-
-**Tool Definitions**: [app/services/agent_tools.py](app/services/agent_tools.py)
-
-### 3. Tool Call Reliability with Fallback
-
-The agent implements automatic fallback mechanisms:
-
-1. **Primary Path**: Agent attempts to fetch data from BigQuery storage first
-2. **Fallback Path**: If storage query fails or returns no data, the agent automatically falls back to the OpenWeatherMap API
-3. **Error Handling**: Each tool returns structured success/error responses that the agent can interpret and act upon
-
-Example workflow:
+### Automatic Fallback
 ```
-User Query → Agent → Try get_current_weather_from_storage
-                  ↓ (if fails)
-                  → Fallback to get_current_weather_from_api
-                  ↓
-                  → Return natural language response
+User Query → Try BigQuery → (if fails) → Try OpenWeatherMap API → Response
 ```
 
-### 4. Guardrails
+### Two-Layer Guardrails
 
-Multiple layers of guardrails ensure the agent only answers weather-related questions:
+**Layer 1**: Pre-classification
+- Separate LLM call checks if query is weather-related
+- Refuses non-weather queries immediately
 
-#### Layer 1: LLM-based Classification
-- **Method**: Separate LLM call to classify if query is weather-related
-- **Location**: `_check_if_weather_related()` in [app/services/weather_agent.py](app/services/weather_agent.py:178)
-- **Response**: Returns refusal message for non-weather queries
+**Layer 2**: System prompt enforcement
+- Instructs model to only answer weather questions
+- Polite refusal for off-topic queries
 
-#### Layer 2: System Prompt Instructions
-- **Method**: Detailed system prompt with explicit guardrail instructions
-- **Location**: `SYSTEM_PROMPT` in [app/services/weather_agent.py](app/services/weather_agent.py:18)
-- **Content**: Instructs the model to refuse non-weather queries politely
-
-#### Refusal Response Example
+**Example Refusal**:
 ```
 "I'm sorry, but I can only help with weather-related questions.
 Please ask me about current weather conditions, historical weather data,
 or weather statistics for specific cities."
 ```
 
-## API Endpoints
+---
 
-### POST `/agent/query`
+## API Usage
 
-Query the weather agent with natural language questions.
+### Query the Agent
 
-**Request Body**:
+**Endpoint**: `POST /agent/query`
+
+**Request**:
 ```json
 {
-  "query": "What is the current weather in Colombo?",
-  "conversation_history": null
+  "query": "What is the current weather in Colombo?"
 }
 ```
 
@@ -100,16 +76,16 @@ Query the weather agent with natural language questions.
     {
       "function": "get_current_weather_from_storage",
       "arguments": {"city": "Colombo"},
-      "result": {"success": true, "temperature": 28, ...}
+      "result": {"success": true, "temperature": 28}
     }
   ],
   "model": "gpt-4o-mini"
 }
 ```
 
-### GET `/agent/health`
+### Agent Health Check
 
-Check the health status of the agent service.
+**Endpoint**: `GET /agent/health`
 
 **Response**:
 ```json
@@ -120,143 +96,89 @@ Check the health status of the agent service.
 }
 ```
 
+---
+
 ## Example Queries
 
-### Weather-Related Queries (Accepted)
+### ✅ Accepted (Weather-Related)
 
-1. **Current Weather**:
-   - "What is the current weather in Colombo?"
-   - "How's the weather in London right now?"
-   - "Is it raining in Tokyo?"
+- "What is the current weather in Colombo?"
+- "How's the weather in London right now?"
+- "What was the average temperature in Tokyo yesterday?"
+- "Show me the weather history for Paris over the last 3 days"
+- "Is it raining in Mumbai?"
+- "How humid is it in Sydney?"
+- "What's the wind speed in Berlin?"
 
-2. **Historical Data**:
-   - "What was the average temperature in Galle last week?"
-   - "Show me the weather history for Paris over the last 30 days"
-   - "What was the temperature trend in New York last month?"
+### ❌ Refused (Non-Weather)
 
-3. **Specific Metrics**:
-   - "How humid is it in Mumbai?"
-   - "What's the wind speed in Sydney?"
-   - "Tell me about the temperature and conditions in Berlin"
+- "What's the capital of France?"
+- "Tell me a joke"
+- "What's the stock price of Tesla?"
+- "Who won the game yesterday?"
 
-### Non-Weather Queries (Refused)
+---
 
-- "What's the capital of France?" → Refused
-- "Who won the game yesterday?" → Refused
-- "Tell me a joke" → Refused
-- "What's the stock price of Tesla?" → Refused
+## Testing
 
-## Configuration
+### Using curl
 
-### Environment Variables
-
-Add to your `.env` file:
-
+**Weather query**:
 ```bash
-# OpenAI API Configuration
-OPENAI_API_KEY=sk-your-openai-api-key-here
-
-# OpenWeatherMap API Configuration
-OPENWEATHER_API_KEY=your-openweathermap-api-key-here
-
-# Google Cloud BigQuery Configuration
-GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
-GCP_PROJECT_ID=your-gcp-project-id
-BIGQUERY_DATASET=weather_data
-BIGQUERY_TABLE=weather_records
+curl -X POST http://localhost:8000/agent/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is the current weather in London?"}'
 ```
 
-### Installation
-
-1. Install dependencies:
+**Non-weather query** (should be refused):
 ```bash
-pip install -r requirements.txt
+curl -X POST http://localhost:8000/agent/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What is the capital of Sri Lanka?"}'
 ```
 
-2. Configure environment variables in `.env`
-
-3. Run the application:
+**Historical query**:
 ```bash
-uvicorn app.main:app --reload
+curl -X POST http://localhost:8000/agent/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What was the average temperature in Tokyo yesterday?"}'
 ```
+
+### Interactive Documentation
+
+Visit: http://localhost:8000/docs
+
+---
 
 ## Architecture
 
 ```
 User Query
     ↓
-FastAPI Endpoint (/agent/query)
+Weather-Related Check (Guardrail Layer 1)
+    ├── NO → Refusal message
+    └── YES → Continue
     ↓
-WeatherAgent.process_query()
+OpenAI GPT-4o-mini (with function calling)
     ↓
-├── Check if weather-related (Guardrail)
-│   ├── YES → Continue
-│   └── NO → Return refusal message
+Execute Tool (with fallback)
+    ├── Try: get_current_weather_from_storage
+    └── Fallback: get_current_weather_from_api
     ↓
-OpenAI API (with function calling)
-    ↓
-├── Tool Call: get_current_weather_from_storage
-│   ├── SUCCESS → Return data
-│   └── FAIL → Try fallback
-│       ↓
-│       Tool Call: get_current_weather_from_api
-│       ├── SUCCESS → Return data
-│       └── FAIL → Return error
-    ↓
-OpenAI API (final response generation)
-    ↓
-Natural Language Response to User
+Natural Language Response
 ```
 
-## Key Files
-
-- [app/services/weather_agent.py](app/services/weather_agent.py) - Main agent implementation
-- [app/services/agent_tools.py](app/services/agent_tools.py) - Custom tool definitions
-- [app/routes/agent.py](app/routes/agent.py) - FastAPI endpoints
-- [app/models.py](app/models.py) - Request/Response models
-- [app/config.py](app/config.py) - Configuration management
-
-## Testing
-
-You can test the agent using curl:
-
-```bash
-# Test weather query
-curl -X POST "http://localhost:8000/agent/query" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What is the current weather in Colombo?"}'
-
-# Test non-weather query (should be refused)
-curl -X POST "http://localhost:8000/agent/query" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What is the capital of Sri Lanka?"}'
-
-# Test historical query
-curl -X POST "http://localhost:8000/agent/query" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What was the average temperature in Galle last week?"}'
-```
-
-Or use the interactive API documentation at `http://localhost:8000/docs`
+---
 
 ## Cost Optimization
 
-- Uses `gpt-4o-mini` model for cost-effectiveness
-- Implements caching through BigQuery storage to minimize API calls
-- Only falls back to OpenWeatherMap API when necessary
-- Efficient tool calling reduces token usage
+- Uses GPT-4o-mini (~$6/month for 1000 queries/day)
+- Caches data in BigQuery to minimize API calls
+- Falls back to live API only when necessary
 
-## Security Considerations
+---
 
-- API keys stored in environment variables
-- Guardrails prevent prompt injection attacks
-- Input validation on all endpoints
-- Rate limiting recommended for production use
-
-## Future Enhancements
-
-- Conversation memory for multi-turn dialogues
-- Support for weather forecasts
-- Integration with additional weather data sources
-- Caching layer for frequently asked questions
-- User authentication and rate limiting
+**Implementation Files**:
+- [app/services/weather_agent.py](app/services/weather_agent.py) - Agent logic
+- [app/services/agent_tools.py](app/services/agent_tools.py) - Tool definitions
+- [app/routes/agent.py](app/routes/agent.py) - API endpoints
