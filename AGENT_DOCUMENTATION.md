@@ -152,8 +152,37 @@ Visit: http://localhost:8000/docs
 
 ## Architecture
 
+### Complete System Flow
+
 ```
-User Query
+┌─────────────────────────────────────────────────────────────────┐
+│                    DATA COLLECTION & STORAGE                     │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+        ┌───────────────────────────────────────┐
+        │  OpenWeatherMap API (every hour)      │
+        │  - Fetch 145 cities                   │
+        │  - Temperature, humidity, wind, etc.  │
+        └───────────────────────────────────────┘
+                              ↓
+        ┌───────────────────────────────────────┐
+        │      APScheduler (Orchestration)      │
+        │  - Backfill: 3 days at startup        │
+        │  - Hourly: Update all cities          │
+        └───────────────────────────────────────┘
+                              ↓
+        ┌───────────────────────────────────────┐
+        │     BigQuery Storage (Clustered)      │
+        │  - weather_records table              │
+        │  - Clustered by [city, timestamp]     │
+        │  - ~10,440 records (3 days)           │
+        └───────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    AI AGENT QUERY WORKFLOW                       │
+└─────────────────────────────────────────────────────────────────┘
+
+User Query (Natural Language)
     ↓
 Weather-Related Check (Guardrail Layer 1)
     ├── NO → Refusal message
@@ -163,7 +192,14 @@ OpenAI GPT-4o-mini (with function calling)
     ↓
 Execute Tool (with fallback)
     ├── Try: get_current_weather_from_storage
+    │         ↓
+    │   BigQuery Repository
+    │         ↓
+    │   Query weather_records table
+    │
     └── Fallback: get_current_weather_from_api
+              ↓
+        OpenWeatherMap API (live)
     ↓
 Natural Language Response
 ```
