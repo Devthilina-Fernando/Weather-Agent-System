@@ -24,7 +24,7 @@ AI-powered weather data pipeline that collects, stores, and intelligently serves
    ```
    Weather-Agent-System/
    └── credentials/
-       └── credentials.json
+       └── adup-assignment-cc3101fc9d70.json
    ```
 
 ### Step 2: Run with Docker
